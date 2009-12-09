@@ -1,0 +1,87 @@
+#LyX 1.6.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 345
+\begin_document
+\begin_header
+\textclass article
+\use_default_options false
+\language english
+\inputencoding auto
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\paperfontsize 12
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\paperorientation portrait
+\leftmargin 1in
+\topmargin 1.5in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Title
+CPSC 432 Final Project
+\end_layout
+
+\begin_layout Title
+InstrVisualizer - An Euterpea Widget for testing customized instruments
+\end_layout
+
+\begin_layout Author
+Harley Trung
+\end_layout
+
+\begin_layout Date
+December 8, 2010
+\end_layout
+
+\begin_layout Standard
+- Creating custom instrument in Euterpea: type Instr a = Dur -> AbsPitch
+ -> Volume -> [Double] -> a
+\end_layout
+
+\begin_layout Standard
+- Issues to deal with when creating instruments: clipping, enveloping, rendering
+ time, tedious testing
+\end_layout
+
+\begin_layout Standard
+- InstrVisualizer widget: quickly switch between instruments, fine tuning
+ parameters, preview wave form without loading an external app (eg.
+ Audacity), save to file, play, etc
+\end_layout
+
+\begin_layout Standard
+- A good way to test the combination of 2 separate components of Euterpea:
+ Signal/UI used in GMI and signal functions implemented as Arrow.
+\end_layout
+
+\end_body
+\end_document
