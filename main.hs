@@ -1,5 +1,18 @@
 {-# LANGUAGE Arrows #-}
-module InstrVisualizr where
+{- NOTE: to compile:
+ghc --make -i/home/dtt22/Euterpea/src/:/home/dtt22/Euterpea/dist/build -O3 main.hs
+-}
+
+module Main where
+
+{- TODO:
+- toSamples earlier: process rendered stuff earlier and see if it improves performance?
+- http://github.com/willdonnelly/dyre: read haskell code on the fly
+- plot table
+- hindley milner: for writing an interpreter
+- write liftIO function
+- display vertical bar showing progress on plot while playing wave file
+-}
 
 import Euterpea
 import Euterpea.UI
@@ -8,71 +21,93 @@ import Euterpea.UI.UIMonad
 import Euterpea.UI.SOE hiding (line)
 import Euterpea.UI.Signal
 import Control.Applicative
-import Numeric
 import Euterpea.Audio.Render
 import Euterpea.Audio.CSoundGenerators hiding (line)
 import Euterpea.Audio.Basics
 import Euterpea.Audio.Types hiding (Signal)
 import Euterpea.Audio.IO
-import Time
+--import Time
 import Directory (removeFile)
 import System.Posix.Files (fileExist)
 import Control.Concurrent (forkIO)
-import System (system)
+import System.Cmd (rawSystem)
 
 import InstrStore
 import NewWidgets
 import ScoreStore
+import Text.Printf
 
-playerName = "ls"
+playerName = "play"
 
-display' :: Show a => Signal a -> UI ()
-display' = display . lift1 show
+showS :: Show a => Signal a -> UI ()
+showS = display . lift1 show
 
 titleNdisplay :: (Show a) => String -> UI (Signal a) -> UI (Signal a)
-titleNdisplay str action = title str $ leftRight action >>= \x -> display' x >> return x
+titleNdisplay str action = title str $ leftRight $ action >>= \x -> showS x >> return x
 
 -- add pFields to music
 -- limitations: constant pFields for the whole music; any specific part can be overwritten
 addPFields :: [Double] -> Music Pitch -> Music (Pitch, [NoteAttribute])
 addPFields pf = mMap (\p -> (p, [PFields pf]))
 
--- TODO: should also accept Music (Pitch, [NoteAttribute]) ?
---getSong :: Int -> Music Pitch
+getSong :: Int -> Music Pitch
 getSong = snd . (songMap !!)
 
-render :: (Int, Int) -> (Int, (Double, Mono AudRate))
-render (i, j) = (i+j, -- used to detect signal changes in instrument/song selection
-                 renderSF (instrument (fst $ instrMap !! i) (addPFields [1,2,3] (getSong j)))
-                           instrMap)
+instrName :: InstrumentName -> String
+instrName (Custom name) = name
+instrName orig          = "modified-" ++ show orig
 
+-- TODO: Work for both Mono and Stereo
+--render :: (Int, Int) -> (Double, Mono AudRate)
+render (i, j) = renderSF (instrument (fst $ instrMap !! i) (addPFields [1,2,3] (getSong j))) instrMap
+
+--render2samples :: (Int, Int) -> [Double] -> (Int, [Double])
+render2samples (i, j) pFields = (i+j, -- used to detect signal changes in instrument/song selection
+                 uncurry toSamples $ renderSF (instrument (fst $ instrMap !! i) (addPFields pFields (getSong j)))
+                                               instrMap)
+
+--------------------------
+-- BEGIN CONFIGURATIONS --
+--------------------------
 midY, canvasWidth, canvasHeight :: Int
-canvasHeight = 400
+canvasHeight = 200
 canvasWidth = 1000
 midY = canvasHeight `div` 2
 amplifyY = 100 -- amplify y-axis: [-1.0, 1] becomes [-100 to 100] pixel offsets
+--------------------------
 
 selectInstr, selectSong :: UI (Signal Int)
 selectInstr = title "Select Instr instance" $ radio (map (show . fst) instrMap) 0
 selectSong  = title "Select Song" $ radio (map fst songMap) 0
 
-setPFields :: UI ([Signal Double])
-setPFields = title "pFields" $ do
-    p1 <- titleNdisplay "p1" $ hSlider (0, 100) 0
-    p2 <- titleNdisplay "p2" $ hSlider (0, 100) 0
-    p3 <- titleNdisplay "p3" $ hSlider (0, 100) 0
-    return [p1, p2, p3]
+listS :: [Signal a] -> Signal [a]
+listS = Signal . zipL . (map unS)
+    where zipL ([]:_) = []
+          zipL lst    = map head lst : zipL (map tail lst)
 
-main = runUIEx (canvasWidth+10,900) "UI Demo" $ do
+setPFields :: Int -> [Double] -> UI (Signal [Double])
+setPFields n defaultPfields = title "pFields" $ topDown $ do
+    lst <- leftRight $ sequence $ reverse $ map f (pair n defaultPfields)
+    let tmp = listS lst
+    display (lift1 unwords (lift1 (map dispDouble) tmp))
+    return tmp
+  where
+    dispDouble f = printf "%.2f" (f::Double) :: String
+    f (i, v)     = {-titleNdisplay ("p"++show i) $ -} vSlider (0, 10) v
+    pair n []     = [(n,0)]
+    pair 0 (p:ps) = [(n,p)]
+    pair n (p:ps) = (n,p) : (pair (n-1) ps)
+
+main = runUIEx (canvasWidth+10, 900) "UI Demo" $ do
     (idxPair, pFields) <- leftRight $ do
         i       <- selectInstr
         j       <- selectSong
-        fields  <- setPFields
+        fields  <- setPFields 4 [0.2, 0.01, 0.5, 0.3]
         return (zipS i j, fields)
 
-    waveVisualizer (lift1 render idxPair)
+    waveVisualizer (lift2 render2samples idxPair pFields)
 
-    z <- smartButton "Currently unpressed" "zomg I am being pressed"
+    z <- smartButton "press me :-)" "zomg I am being pressed"
 
     leftRight $ do
         let events x = snapshot_ (edge x) idxPair
@@ -88,30 +123,32 @@ takeEvery n (x:xs) = x : takeEvery n (drop (n-1) xs)
 -- note that coords is from top down instead of bottom up, hence the "midY -"
 plot :: (Int, Double) -> [Double] -> Graphic
 plot (scaleX, scaleY) lst = polyline $ zip [1,2..canvasWidth] (takeEvery scaleX ys)
-    where  ys = map ((midY-) . round . (*(amplifyY*scaleY))) lst
+    where factor = amplifyY*scaleY
+          ys     = map ((midY-) . round . (*factor)) lst
 
-waveVisualizer :: Signal (Int, (Double, Mono AudRate)) -> UI ()
+waveVisualizer :: Signal (Int, [Double]) -> UI ()
 waveVisualizer comboS = title "Wave Visualizer" $ do
     xy <- leftRight $ do
         x <- titleNdisplay "Horizontal Zoom-Out:" $ hiSlider 1 (1, 100) 1
         y <- titleNdisplay "Vertical Zoon-In:" $ hSlider (1, 10) 1
         return (zipS x y)
-    -- Using fstS and sndS comboS because unique cannot take signal of arrow
+    -- fstS comboS is included to convert to EventS
     let events = snapshot (unique (zipS xy (fstS comboS)) =>> fst) (sndS comboS)
     canvas (canvasWidth, canvasHeight) (events  =>> draw)
---        canvas (0,0) (unique y =>> \y -> text(0,0) (show $ 1.0 / y))
           where
-            samples sf = uncurry toSamples sf
-            draw ((x,y),audsf)  = withColor Green (text (0,0) (show $ 1.0 / y)) //
-                                  withColor Blue (plot (x,2*y) (samples audsf)) //
-                                  drawGrid
+            draw ((x,y),samples)  = withColor Green (text (0,0) (show $ 1.0 / y)) //
+                                    withColor Blue (plot (x,2*y) samples) //
+                                    drawGrid
             drawGrid :: Graphic
             drawGrid = (polyline [(0, midY), (canvasWidth, midY)]) //
                        (polyline [(0,0), (canvasWidth, 0)])  //
                        (polyline [(0,canvasHeight), (canvasWidth, canvasHeight)])
 
--- we can easily change getFileName to use a separate file for each song/instr
-getFileName = const "test.wav"
+-- Use a separate file for each song/instr
+getFileName :: (Int, Int) -> String
+getFileName (i,j) = let ins = instrName . fst $ instrMap !! i
+                    in ins ++ "_" ++ (show j) ++ ".wav"
+
 -- get current time to a string to create unique file names, if necessary
 --getCurrentTime = getClockTime >>= toCalendarTime >>= return . calendarTimeToString
 
@@ -128,9 +165,8 @@ saveFile idxPair = UI aux
             forkIO $ do
                 putStrLn $ "Saving... Please wait"
                 writeFile "./saving.tmp" "" -- create a tempfile to indicate saving is taking place
-                let rendered = snd $ render ij
                 let fileName = getFileName ij
-                uncurry (outFile $ fileName) rendered
+                uncurry (outFile $ fileName) (render ij)
                 putStrLn $ "wrote to file " ++ fileName
                 removeFile "./saving.tmp"   -- remove tempfile to indicate saving is done
             return ()
@@ -143,24 +179,19 @@ playFile idxPair = UI aux
         out = pure (\idx (ievt,s) -> ((nullGraphic, writeOut idx),s))
         writeOut Nothing = return ()
         writeOut (Just ij) = do
+          forkIO $ do
+            putStrLn "Started playing..."
             x <- fileExist "./saving.tmp"
+            y <- fileExist $ getFileName ij
             if x then putStrLn "Cannot play file yet.  It seems file is still being written."
-             else system (playerName ++ " " ++ getFileName ij) >> return () -- TODO: why segfault after running this?
+             else if y then putStrLn ("File " ++ getFileName ij ++ " does not exist. Save it first.")
+              else rawSystem playerName [] >> return () -- TODO: why segfault after running this?
+            putStrLn "IF SEGFAULT, THIS IS NOT REACHED!"
+          return ()
 
-
-
-
-{-
-vol :: Integer -> Music Pitch -> Music (Pitch, [NoteAttribute])
-vol v (Prim (Note d p)) = Prim (Note d (p, [Volume v]))
-vol v (Prim (Rest d)) = Prim (Rest d)
-vol v (a :+: b) = vol v a :+: vol v b
-vol v (a :=: b) = vol v a :=: vol v b
-vol v (Modify c m) = Modify c (vol v m)
-
-
-
-
-
--}
+io2ui :: IO () -> UI ()
+io2ui ioAction = UI aux
+  where
+    out = pure (\(ievt,s) -> ((nullGraphic, ioAction),s))
+    aux ctx inp = (out <*> inp, (nullLayout, ()))
 

@@ -4,6 +4,7 @@ import Euterpea.UI.Widget
 import Euterpea.UI.UIMonad
 import Euterpea.UI
 import Euterpea.UI.SOE
+import Euterpea.UI.Signal
 
 smartButton :: String -> String -> UI (Signal Bool)
 smartButton labelUnpressed labelPressed =
