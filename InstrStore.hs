@@ -14,8 +14,8 @@ import Euterpea hiding (line, delay, f)
 
 
 --instrMap :: InstrMap (Mono AudRate)
---instrMap = [(myBass, plk), (myReed, reed), (thornyMessy, thorny2), (tipsyFrenzy, tipsy2)]
-instrMap = [(tipsyFrenzy, tipsy)]
+instrMap = [(myBass, plk), (myReed, reed), (thornyMessy, thorny2), (tipsyFrenzy, tipsy2)]
+--instrMap = [(tipsyFrenzy, tipsy)]
 instrMapStereo = [(thornyMessy, thorny), (tipsyFrenzy, tipsy)]
 
 saw = gen10 4096 [1, 0.5, 0.333, 0.25, 0.2, 0.166, 0.142, 0.125,
