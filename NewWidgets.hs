@@ -1,3 +1,10 @@
+--------------------------------------------------------------------------------
+-- Author:   Harley Trung
+-- Contact:  github.com/harleyttd
+--           twitter.com/harleytt
+-- Final Project, CPSC 432, Sound Representation & Synthesis, Fall 2009 at Yale
+-- Revised date: December 15, 2009
+--------------------------------------------------------------------------------
 module NewWidgets where
 import Euterpea hiding (line)
 import Euterpea.UI.Widget
@@ -7,9 +14,17 @@ import Euterpea.UI.SOE
 import Euterpea.UI.Signal
 import Data.Char
 
-import System.IO.Unsafe
-debug s x = unsafePerformIO (print s) `seq` x
+--import System.IO.Unsafe
+--debug s x = unsafePerformIO (print s) `seq` x
 
+showS :: Show a => Signal a -> UI ()
+showS = display . lift1 show
+
+titleNdisplay :: (Show a) => String -> UI (Signal a) -> UI (Signal a)
+titleNdisplay str action = title str $ leftRight $ action >>= \x -> showS x >> return x
+
+-- button that have different string when pressed or unpressed
+-- TODO: Have a button that stay pressed until a done signal is sent
 smartButton :: String -> String -> UI (Signal Bool)
 smartButton labelUnpressed labelPressed =
   mkUI False d draw (const nullSound) (const id)
@@ -42,21 +57,12 @@ smartButton labelUnpressed labelPressed =
             myid = uid ctx
             focused = focus sys == Just myid
 
-{-
-main = runUIEx (1000, 300) "Textbox" $ do
-      label "Testing"
-      sp <- textbox "textbox"
-      title "Returned string" (display (lift1 show sp))
-      f1 <- infKnob (9 / pi) 0.0 (pi / 2)
-      display (lift1 show f1)
-      f2 <- bndKnob (-20.0, 20.0) (18 / pi) 0.0 (pi / 2)
-      display (lift1 show f2)
--}
-
-data TextBox = TextBox { str :: String,
-                         foc :: Bool,
-                         flash :: Int,
-                         pos   :: Int} deriving Show
+data TextBox = TextBox { str   :: String,  -- current string value of textbox
+                         prev  :: String, -- latest string input from outside, to detect changes
+                         foc   :: Bool,    -- being focused or not
+                         flash :: Int,   -- for blinking caret/cursor
+                         pos   :: Int}   -- current pos of caret/cursor
+               deriving Show
 
 insertAt :: Int -> a -> [a] -> [a]
 insertAt 0 c lst = c:lst
@@ -68,28 +74,69 @@ removeAt 0 lst = tail lst
 removeAt i (x:xs) = x : removeAt (i-1) xs
 removeAt _ lst = lst
 
+-- CREDIT: original textbox was written by Reynard Le, and I greatly improved it with:
+--   * a blinking cursor/carat
+--   * more efficient & streamline, less parameters, using records
+--   * allows Signal String instead of String, this may make it slightly less efficient but most likely not noticeable
 isAcceptable c = (ord c < 128) && (isAlphaNum c || isSpace c || isPunctuation c || isSymbol c)
-proj x = (lift1 str x, x)
-{-
-mkUI :: s ->                                          -- initial state
-        Layout ->                                     -- layout
-        (Rect -> s -> Graphic) ->                     -- drawing routine
-        (s -> IO ()) ->                               -- sound routine
-        (a -> Signal s -> Signal s1) ->               -- input injection
-        (CTX -> (s1, (Input, Sys)) -> (s2, Sys)) ->   -- computation
-        (Signal s2 -> (b, Signal s)) ->               -- output projection
-        a -> UI b
--}
+textbox :: Signal String -> UI (Signal String)
+textbox inputS = mkUI (TextBox "" "" False  0  0)           -- initial state
+                    layout                                   -- layout
+                    draw                                     -- display routine
+                    (const nullSound)                        -- sound routine
+                    inputInj                                 -- input injection
+                    process                                  -- computation
+                    proj                                     -- output projection
+                    inputS                                   -- continuous input (signal)
+  where
+      minh = 16 + padding * 2
+      layout = Layout 1 0 0 minh 8 minh
+      flashFreq = 40    -- flash for 40% of of the time
+      inputInj :: Signal String -> Signal TextBox -> Signal TextBox
+      inputInj sS tS = lift2 aux sS tS  -- check if signal string input changes, then update internal state
+        where aux s t = if s /= prev t then t{str=s, prev=s} else t
+      proj x = (lift1 str x, x)         -- only project out the current string, project the whole x if debugging
+      draw b@(p@(x, y), (w, h)) (TextBox str _ foc flash pos) =
+          let n = (w - padding * 2) `div` 8 -- num of characters allowed
+              len = length str
+          in (if (flash < flashFreq && foc) -- to enable blinking, add flash here
+              then (withColor Black $ text (x + pos *  8, y + padding) "|" )
+              else nullGraphic)
+              // withColor Black (text (x + padding, y + padding) str)
+              // (box pushed b)
+              // (withColor White $ block b)
+      process ctx (TextBox str prev foc flash pos, (evt, sys)) =
+          (TextBox str' prev foc' flash' pos',  markDirty sys ((str, foc, pos) /= (str', foc', pos') || flash<flashFreq))
+          where
+              bbx@((bx, by), (bw, bh)) = computeBBX ctx layout
+              len = length str
+              flash' = if flash == 100 then 0 else succ flash
+              foc' = case evt of UIEvent (Button pt True True) -> pt `inside` bbx
+                                 _ -> foc
+              (str', pos') = if (not foc') then (str, len) else case evt of
+                  UIEvent (Button (px, py) True True) -> (let d = (px - bx - padding) `div` 8 in (str, max 0 (min d len)))
+                  UIEvent (Key c True) -> if (isAcceptable c)
+                                          then (insertAt pos c str, pos + 1)
+                                          else (case c of
+                                                  '\b' -> if (pos > 0) then (removeAt (pos-1) str, pos - 1) else (str, pos) -- backspace
+                                                  '\0177' -> if (pos < len) then (removeAt pos str, pos) else (str, pos)    -- delete
+                                                  '\0208' -> if pos > 0 then (str, pos - 1) else (str, 0)                   -- left arrow
+                                                  '\0214' -> if pos < len then (str, pos + 1) else (str, len)               -- right arrow
+                                                  '\0213'  -> (str, 0)
+                                                  '\0200'  -> (str, len)
+                                                  _ -> error "Wo, What key is that?") -- I DONT KNOW ANY KEY UNCOSIDERED. Let me know if there's any. -Harley
+                  _ -> (str, pos)
 
-textbox :: String -> UI (Signal String)
+-- Non signal version if the above version is slow. Dont think it's needed
+{-textbox :: String -> UI (Signal String)
 textbox init = mkUI (TextBox init  False  0  (length init))  -- initial state
-                    layout                                                   -- layout
-                    draw                                                     -- display routine
-                    (const nullSound)                                        -- sound routine
-                    (const id)                                               -- input injection
-                    process                                                  -- computation
-                    proj                                                     -- output projection
-                    (const ())                                               -- input
+                    layout                                   -- layout
+                    draw                                     -- display routine
+                    (const nullSound)                        -- sound routine
+                    (const id)                               -- input injection
+                    process                                  -- computation
+                    proj                                     -- output projection
+                    (const ())                               -- input
   where
       minh = 16 + padding * 2
       layout = Layout 1 0 0 minh 8 minh
@@ -125,7 +172,9 @@ textbox init = mkUI (TextBox init  False  0  (length init))  -- initial state
                                                   _ -> error "Wo, What key is that?") -- I DONT KNOW ANY KEY UNCOSIDERED. Let me know if there's any. -Harley
                   _ -> (str, pos)
 
+-}
 
+-- Knob widgets, all written by Reynard Le.  I haven't reviewed these yet.
 bndKnob :: RealFloat a => (a, a) -> a -> a -> a -> UI (Signal a)
 bndKnob (min, max) scale initVal initAng = mkKnob v2a a2v initVal
   where
