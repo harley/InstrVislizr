@@ -1,0 +1,6 @@
+ghc --make EnableGUI.hs
+ghci main EnableGUI.hs <<EOF
+  :m +EnableGUI
+  enableGUI >> main
+EOF
+
