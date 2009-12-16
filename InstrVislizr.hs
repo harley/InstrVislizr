@@ -10,9 +10,9 @@ module InstrVislizr where
 -- NOTE: to compile, ghc --make -i/home/dtt22/Euterpea/src/:/home/dtt22/Euterpea/dist/build -O3 main.hs
 
 {- TODO:
-- http://github.com/willdonnelly/dyre: read haskell code on the fly
-- plot table
-- display vertical bar showing progress on plot while playing wave file
+- http://github.com/willdonnelly/dyre: read haskell code on the fly to use on InstrStore.hs and SongStore.hs
+- plot table (genxx)
+- display vertical bar showing progress on plot while playing wave file -- only after play from memory is implemented
 -}
 
 import Euterpea
@@ -66,8 +66,7 @@ getDefaultPfields i = case Map.lookup (fst (instrMap !! i)) pFieldsRealMap of
 -------------------------------------------------------------------------------
 -- SADLY, this is OS-dependent. Linux is "play"
 -- This is temporary, however, because playFile will eventually play from memory, not file
-playerName = "start "
-playerCall fname = system (playerName ++ fname)
+playerCall playerName fname = system (playerName ++ " " ++ fname)
 -------------------------------------------------------------------------------
 
 -- add pFields to music
@@ -219,21 +218,21 @@ saveFile pfields idxPair = UI aux
                 removeFile "./saving.tmp"   -- remove tempfile to indicate saving is done
             return ()
 
-playFile :: EventS (Int,Int) -> UI ()
-playFile idxPair = UI aux
+playFile :: Signal String -> EventS (Int,Int) -> UI ()
+playFile playerNameS idxPair = UI aux
   where
-    aux ctx inp = (out <*> idxPair <*> inp, (nullLayout, ()))
+    aux ctx inp = (out <*> playerNameS <*> idxPair <*> inp, (nullLayout, ()))
       where
-        out = pure (\idx (ievt,s) -> ((nullGraphic, writeOut idx),s))
-        writeOut Nothing = return ()
-        writeOut (Just ij) = do
+        out = pure (\pname idx (ievt,s) -> ((nullGraphic, writeOut pname idx),s))
+        writeOut _ Nothing = return ()
+        writeOut playerName (Just ij) = do
           forkIO $ do
             let fname = getFileName ij
             putStrLn $ "Started playing..." ++ fname
             x <- doesFileExist "./saving.tmp"
             y <- doesFileExist $ fname
             if x then putStrLn "Cannot play file yet.  It seems file is still being written."
-                 else if y then playerCall fname >> return () -- TODO: why segfault after running this? (not segfault when compiled)
+                 else if y then playerCall playerName fname >> return () -- TODO: why segfault after running this? (not segfault when compiled)
                            else putStrLn ("File " ++ fname ++ " does not exist. Save it first.")
             putStrLn "IF SEGFAULT, THIS IS NOT REACHED!"
           return ()

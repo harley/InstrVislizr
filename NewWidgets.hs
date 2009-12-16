@@ -57,6 +57,7 @@ smartButton labelUnpressed labelPressed =
             myid = uid ctx
             focused = focus sys == Just myid
 
+-- TODO: It would be cool to have textbox display gray hint text
 data TextBox = TextBox { str   :: String,  -- current string value of textbox
                          prev  :: String, -- latest string input from outside, to detect changes
                          foc   :: Bool,    -- being focused or not

@@ -32,6 +32,7 @@ main = runUIEx (canvasWidth+10, 900) "UI Demo" $ do
         let events x = snapshot_ (edge x) (zipS i j)
         button "Save to file" >>= saveFile pFields . events
         -- TODO: implement play from memory instead of playing from file
-        button "Play file" >>= playFile . events
+        playerName <- textbox (constant "play")
+        button "<-- Play file using" >>= playFile playerName . events
     return ()
 
