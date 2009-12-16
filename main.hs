@@ -17,7 +17,7 @@ import NewWidgets
 
 zip3S = lift3 (,,)
 
-main = runUIEx (canvasWidth+10, 900) "UI Demo" $ do
+main = runUIEx (canvasWidth+10, 700) "UI Demo" $ do
     (i, j) <- leftRight $ do
         i       <- selectInstr
         j       <- selectSong

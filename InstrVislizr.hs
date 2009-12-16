@@ -94,7 +94,7 @@ isStereo = countChan instrMap == 2
 -- GLOBAL CONFIGURATIONS (Ugly)--
 ---------------------------------
 midY, canvasWidth, canvasHeight :: Int
-canvasHeight = 200
+canvasHeight = 150
 canvasWidth = 1000
 midY = canvasHeight `div` 2
 amplifyY = 100 -- amplify y-axis: [-1.0, 1] becomes [-100 to 100] pixel offsets

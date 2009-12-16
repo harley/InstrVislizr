@@ -105,7 +105,7 @@ textbox inputS = mkUI (TextBox "" "" False  0  0)           -- initial state
               else nullGraphic)
               // withColor Black (text (x + padding, y + padding) str)
               // (box pushed b)
-              // (withColor White $ block b)
+              // (withColor Cyan $ block b) -- will need a diff color but this for now, to differentiate from other display box
       process ctx (TextBox str prev foc flash pos, (evt, sys)) =
           (TextBox str' prev foc' flash' pos',  markDirty sys ((str, foc, pos) /= (str', foc', pos') || flash<flashFreq))
           where
