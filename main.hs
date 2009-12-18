@@ -1,4 +1,6 @@
 {-# LANGUAGE Arrows, ScopedTypeVariables, NamedFieldPuns, FlexibleContexts #-}
+-- THIS IS A DEMO file.
+-- The main library is in InstrVislizr.hs
 -- NOTE: to compile, type: make
 
 module Main where
@@ -14,25 +16,10 @@ import InstrVislizr
 import Euterpea.UI
 import Euterpea.UI.Signal
 import NewWidgets
+import InstrStore
+import ScoreStore
 
-zip3S = lift3 (,,)
-
-main = runUIEx (canvasWidth+10, 700) "UI Demo" $ do
-    (i, j) <- leftRight $ do
-        i       <- selectInstr
-        j       <- selectSong
-        return (i, j)
-    (update, pFields) <- setPFields2 i 4
-    let dirty = (zip3S i j update)
-
-    waveVisualizer dirty (lift3 render2samples i j pFields)
-    --z <- smartButton "press me :-)" "zomg I am being pressed"
-
-    leftRight $ do
-        let events x = snapshot_ (edge x) (zipS i j)
-        button "Save to file" >>= saveFile pFields . events
-        -- TODO: implement play from memory instead of playing from file
-        playerName <- textbox (constant "play")
-        button "<-- Play file using" >>= playFile playerName . events
-    return ()
+-- add pFields to music
+-- limitations: constant pFields for the whole music; any specific part can be overwritten
+main = vislizr instrMapStereo songMapSample pFieldsMapSample
 

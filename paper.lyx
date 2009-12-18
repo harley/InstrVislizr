@@ -47,19 +47,23 @@
 \begin_body
 
 \begin_layout Title
-CPSC 432 Final Project
+InstrVislizr 
 \end_layout
 
 \begin_layout Title
-InstrVisualizer - An Euterpea Widget for testing customized instruments
+An Euterpea Widget for customized instruments
 \end_layout
 
 \begin_layout Author
 Harley Trung
 \end_layout
 
+\begin_layout Author
+CPSC 432 Final Project
+\end_layout
+
 \begin_layout Date
-December 8, 2010
+December 18, 2009
 \end_layout
 
 \begin_layout Standard
@@ -81,6 +85,804 @@ December 8, 2010
 \begin_layout Standard
 - A good way to test the combination of 2 separate components of Euterpea:
  Signal/UI used in GMI and signal functions implemented as Arrow.
+\end_layout
+
+\begin_layout Section*
+Introduction
+\end_layout
+
+\begin_layout Standard
+Euterpea, a music library written in Haskell, does not only provide a concise
+ way to write music melody with great expressiveness, but also add great
+ functionalities to manipulate such melodies.
+ Euterpea offers a powerful way to program the 
+\begin_inset Quotes eld
+\end_inset
+
+interpretation
+\begin_inset Quotes erd
+\end_inset
+
+ of musical values.
+ Euterpea can play a piece of music in Midi, using whichever instrument
+ specified in the melody.
+ In addition, we can also create out own instrument and have Euterpea play
+ that instrument or export out to a wav file.
+ The process of designing complex models of instruments is completely separated
+ from the music melody itself.
+ 
+\end_layout
+
+\begin_layout Standard
+Like everything else in Euterpea, we first look at the type.
+ In this case, the type of an instrument is:
+\end_layout
+
+\begin_layout LyX-Code
+type Instr a = Dur -> AbsPitch -> Volume -> [Double] -> a
+\end_layout
+
+\begin_layout Standard
+Note that its type is polymorphic so as to create either Stereo and Mono
+ sounds determined by 
+\shape italic
+signal function 
+\shape default
+
+\begin_inset Formula $a$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+Many instruments can be transcribed over to Euterpea from CSound files.
+ In addition, the programmer has the freedom to tweak the parameters to
+ create different sound that suits her taste or need.
+ There should be a quick way of testing the sound output after any change
+ to the instrument.
+ This project proposes InstrVislizr which is aimed at easing that process.
+\end_layout
+
+\begin_layout Section*
+Meet InstrVislizr
+\end_layout
+
+\begin_layout Standard
+We will start with a simple instrument, improve it along the way with InsVislizr.
+\end_layout
+
+\begin_layout LyX-Code
+f1 = gen10 4096 [1]
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+simple :: Instr (Mono AudRate)
+\end_layout
+
+\begin_layout LyX-Code
+simple dur pch vol pfields = 
+\end_layout
+
+\begin_layout LyX-Code
+   proc _ do
+\end_layout
+
+\begin_layout LyX-Code
+     oscil f1 - <- apToHz pch
+\end_layout
+
+\begin_layout Standard
+This plays a sine wave of the frequency given by a given note.
+ It is rather monotonous.
+ We would like to improve it by adding some extra effects on it.
+ For example, we use enveloping method to make the sound more interesting.
+ With some experience, we will come up with something like this:
+\end_layout
+
+\begin_layout LyX-Code
+simple :: Instr (Mono AudRate) 
+\end_layout
+
+\begin_layout LyX-Code
+simple dur pch vol pfields =      
+\end_layout
+
+\begin_layout LyX-Code
+   let envSF = linseg [1,0.99,0.4,0.2,0,0] (map f durations)          
+\end_layout
+
+\begin_layout LyX-Code
+       f d = d / sum durations * fromRational dur          
+\end_layout
+
+\begin_layout LyX-Code
+       durations = [0.02, 0.38, 0.4, 0.2, 0]      
+\end_layout
+
+\begin_layout LyX-Code
+   in proc _ -> do        
+\end_layout
+
+\begin_layout LyX-Code
+      s <- oscil f1 0 -< apToHz pch        
+\end_layout
+
+\begin_layout LyX-Code
+      amp <- envSF -< ()        
+\end_layout
+
+\begin_layout LyX-Code
+      returnA -< s * amp * 0.2 
+\end_layout
+
+\begin_layout Standard
+It is apparent that there are a lot of numerical parameters in the example
+ above.
+ Normally, the process of obtaining 
+\begin_inset Quotes eld
+\end_inset
+
+good values
+\begin_inset Quotes erd
+\end_inset
+
+ for a good sound would involve the following steps:
+\end_layout
+
+\begin_layout Enumerate
+Punch in a number of notes and numbers 
+\end_layout
+
+\begin_layout Enumerate
+Render out to a wav file
+\end_layout
+
+\begin_layout Enumerate
+Run a third party app and open the wave file to view and play
+\end_layout
+
+\begin_layout Enumerate
+Have an idea of some areas to tweak, occasionally just intending to modify
+ some numerical parameters
+\end_layout
+
+\begin_layout Enumerate
+Go back to Haskell text editor and change the numbers
+\end_layout
+
+\begin_layout Enumerate
+Repeat the above steps
+\end_layout
+
+\begin_layout Standard
+That is so tedious! Is there a better way?
+\end_layout
+
+\begin_layout Standard
+Meet InstrVislizr.
+\end_layout
+
+\begin_layout LyX-Code
+import InstrVislizr
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+-- CODE THAT YOU ALREADY HAVE ----------------
+\end_layout
+
+\begin_layout LyX-Code
+...
+\end_layout
+
+\begin_layout LyX-Code
+simple = ...
+ -- as shown above
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+simpleInsr = Custom 
+\begin_inset Quotes eld
+\end_inset
+
+simple
+\begin_inset Quotes erd
+\end_inset
+
+ :: InstrumentName
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout LyX-Code
+instrMap :: InstrMap (Mono AudRate)
+\end_layout
+
+\begin_layout LyX-Code
+instrMap = [(Custom 
+\begin_inset Quotes eld
+\end_inset
+
+simple
+\begin_inset Quotes erd
+\end_inset
+
+, simple)]
+\end_layout
+
+\begin_layout LyX-Code
+simpleSong = a 4 qn
+\end_layout
+
+\begin_layout LyX-Code
+----------------------------------------------
+\end_layout
+
+\begin_layout LyX-Code
+-- CODE NEEDED FOR InstrVislizr --------------
+\end_layout
+
+\begin_layout LyX-Code
+songMap = [(
+\begin_inset Quotes eld
+\end_inset
+
+Simple Song
+\begin_inset Quotes erd
+\end_inset
+
+, simpleSong)]
+\end_layout
+
+\begin_layout LyX-Code
+main = vislizr instrMap songMap []
+\end_layout
+
+\begin_layout LyX-Code
+-- THAT'S IT ---------------------------------
+\end_layout
+
+\begin_layout Standard
+Now, after loading the file, running 
+\begin_inset Quotes eld
+\end_inset
+
+main
+\begin_inset Quotes erd
+\end_inset
+
+, we get
+\end_layout
+
+\begin_layout Standard
+\begin_inset Graphics
+	filename simple.png
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Things you can do with InstrVislizr:
+\end_layout
+
+\begin_layout Enumerate
+Choose any instrument from the list
+\end_layout
+
+\begin_layout Enumerate
+Choose any song from the list
+\end_layout
+
+\begin_layout Enumerate
+Immediately see waveform output created by the picked instrument playing
+ the picked song
+\end_layout
+
+\begin_layout Enumerate
+Waveform is plotted before clipping so it is easier to examine that Audacity
+ when a curve is clipped
+\end_layout
+
+\begin_layout Enumerate
+Zoom in/zoom out quickly
+\end_layout
+
+\begin_layout Enumerate
+Change pFields values and if applicable to that instrument, see changes
+ to the waveform by clicking 
+\begin_inset Quotes eld
+\end_inset
+
+Update on graph
+\begin_inset Quotes erd
+\end_inset
+
+ (more on pFields below)
+\end_layout
+
+\begin_layout Enumerate
+Store any good pFields value for future use
+\end_layout
+
+\begin_layout Enumerate
+Save the sound of the respective waveform to a wave file
+\end_layout
+
+\begin_layout Enumerate
+Play the sound from a wave file
+\end_layout
+
+\begin_layout Standard
+The above snippet of code shows the use of 
+\shape italic
+vislizr
+\shape default
+, a function that takes an instrument map, a song map and an optional pfields
+ map (pass [] otherwise)
+\end_layout
+
+\begin_layout LyX-Code
+vislizr :: (Euterpea.Audio.Types.AudioSample a, Euterpea.Audio.Types.Clock p)
+ =>   
+\end_layout
+
+\begin_layout LyX-Code
+        Euterpea.Audio.Render.InstrMap (Euterpea.Audio.Types.Signal p () a)  
+ -> 
+\end_layout
+
+\begin_layout LyX-Code
+        [(String, Euterpea.Music.Music Euterpea.Music.Pitch)]              
+   -> 
+\end_layout
+
+\begin_layout LyX-Code
+        [(Euterpea.Music.InstrumentName, [Double])]   -> 
+\end_layout
+
+\begin_layout LyX-Code
+        IO () 
+\end_layout
+
+\begin_layout Standard
+It is polymorphic to support both InstrMap (Mono AudRate) and InstrMap (Stereo
+ AudRate) instances.
+ AudRate can be also exchanged with CtrRate.
+\end_layout
+
+\begin_layout Section*
+The power of PFields
+\end_layout
+
+\begin_layout Standard
+We rewrite the 
+\shape italic
+simple
+\shape default
+ function above as follow:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+status open
+
+\begin_layout LyX-Code
+simple :: Instr (Mono AudRate)
+\end_layout
+
+\begin_layout LyX-Code
+simple dur pch vol pFields | length pFields > 10 =
+\end_layout
+
+\begin_layout LyX-Code
+  let amps = take 5 pFields
+\end_layout
+
+\begin_layout LyX-Code
+      durations = take 5 (drop 5 pFields)
+\end_layout
+
+\begin_layout LyX-Code
+      f d = d / sum durations * fromRational dur
+\end_layout
+
+\begin_layout LyX-Code
+  in proc _ -> do
+\end_layout
+
+\begin_layout LyX-Code
+     s <- oscil f1 0 -< apToHz pch
+\end_layout
+
+\begin_layout LyX-Code
+     amp <- linseg amps (map f durations) -< ()
+\end_layout
+
+\begin_layout LyX-Code
+     returnA -< s * amp * 0.2
+\end_layout
+
+\begin_deeper
+\begin_layout LyX-Code
+
+\end_layout
+
+\end_deeper
+\begin_layout LyX-Code
+simple dur pch vol _ | otherwise = -- handle default case
+\end_layout
+
+\begin_layout LyX-Code
+     simple dur pch vol [1,0.99,0.4,0.2,0,0, -- first 5 values (amp)
+\end_layout
+
+\begin_layout LyX-Code
+                         0.02, 0.38, 0.4, 0.2, 0, -- next 5 values (dur)
+\end_layout
+
+\begin_layout LyX-Code
+                         0.2] -- final scale factor
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It is clear that we can now overwrite various parameters that affect the
+ sound wave 
+\shape smallcaps
+outside
+\shape default
+ the signal function 
+\shape italic
+simple
+\shape default
+ itself.
+\end_layout
+
+\begin_layout Standard
+The real advantage kicks in when pFields values can be changed on-the-fly
+ in InstrVislizr.
+ 
+\end_layout
+
+\begin_layout LyX-Code
+simpleInstr = Custom "simple"
+\end_layout
+
+\begin_layout LyX-Code
+instrMap = [(simpleInstr, simple)]
+\end_layout
+
+\begin_layout LyX-Code
+songMap = [("Simple Song", simpleSong)]
+\end_layout
+
+\begin_layout LyX-Code
+pFieldsMap = [(simpleInstr, [1,0.99,0.4,0.2,0,0, 0.02, 0.38, 0.4, 0.2, 0, 0.2])]
+\end_layout
+
+\begin_layout LyX-Code
+main = vislizr instrMap songMap pFieldsMap
+\end_layout
+
+\begin_layout LyX-Code
+\begin_inset Graphics
+	filename pfields.png
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout LyX-Code
+pFields can also be used in other situations other than for enveloping functions.
+  Take modeling a flute for example, one would find it desirable to set
+ breath velopcity, dimensions of a physical flulte, etc from pFields values.
+\end_layout
+
+\begin_layout Subsection*
+Can InstrVislizr really help?
+\end_layout
+
+\begin_layout Standard
+In short, yes.
+ Try changing the pFields with other numerical values, see the new graph,
+ click 
+\begin_inset Quotes eld
+\end_inset
+
+Write/append to file
+\begin_inset Quotes erd
+\end_inset
+
+ (the cyan textboxes are editable) and all the values are kept in a file
+ for later uses, especially easy copy and paste in the format of a Haskell
+ list (e.g.
+ to replace the previous set of default pFields values)
+\end_layout
+
+\begin_layout Standard
+Besides the 
+\shape italic
+vislizr 
+\shape default
+function, InstrVislizr module provides another version that allows customizing
+ the dimension of the graphical window (everything else will shrink proportional
+ly)
+\end_layout
+
+\begin_layout LyX-Code
+vislizrEx ::
+\end_layout
+
+\begin_layout LyX-Code
+  (AudioSample a, Clock p, Show a1) =>
+\end_layout
+
+\begin_layout LyX-Code
+  (Int, Int) -- FOR WIDTH AND HEIGHT
+\end_layout
+
+\begin_layout LyX-Code
+  -> InstrMap (Signal p () a)
+\end_layout
+
+\begin_layout LyX-Code
+  -> [(String, Music Pitch)]
+\end_layout
+
+\begin_layout LyX-Code
+  -> [(InstrumentName, [a1])]
+\end_layout
+
+\begin_layout LyX-Code
+  -> IO ()
+\end_layout
+
+\begin_layout Standard
+To get one started quickly, InstrStore.hs provides some examples of instrument
+ code and pFields valuesk, and ScoreStore.hs contain some examples of melodies.
+ The examples are meant to ilustrate InstrVislizr's usefulness, not to demo
+ how great each instrument is.
+ Therefore the minimum code to get InstrVislizr up and running is
+\end_layout
+
+\begin_layout LyX-Code
+import InstrVislizr
+\end_layout
+
+\begin_layout LyX-Code
+import InstrStore
+\end_layout
+
+\begin_layout LyX-Code
+import ScoreStore
+\end_layout
+
+\begin_layout LyX-Code
+main = vislizr instrMapStereo songMapSample pFieldsMapSample
+\end_layout
+
+\begin_layout LyX-Code
+\begin_inset Graphics
+	filename stereo.png
+	scale 45
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Technical implementations
+\end_layout
+
+\begin_layout Subsection*
+Textbox widget
+\end_layout
+
+\begin_layout Standard
+Many thanks go to Reynard Le who wrote the original textbox widget in Fall
+ 2008.
+ It supported text input and allows initialization with a set string.
+ The textbox widget had gone through some drastic changes listed below
+\end_layout
+
+\begin_layout Itemize
+Dynamically updates text content from external source (e.g.
+ use Signal String instead of Signal).
+ This is very useful because a textbox value can now be updated by a slider
+ as well as keyboard input
+\end_layout
+
+\begin_layout Itemize
+Simplified some of the code structure by eliminating the spanS, spanE elements.
+ I use fewer state variables, but added a variable to store the previous
+ value to detect 
+\shape italic
+Signal String 
+\shape default
+changes
+\end_layout
+
+\begin_layout Itemize
+Optimized performance by traversing the list only once to update the redrawing
+ instead of twice (when the cursor position is in the middle of the text)
+\end_layout
+
+\begin_layout Itemize
+Added the blinking cursor/caret for easier navigation (this feature was
+ intended but did not work in the original version)
+\end_layout
+
+\begin_layout Itemize
+Added quick jumping to beginning and end of text by 
+\shape smallcaps
+up
+\shape default
+ and 
+\shape smallcaps
+down
+\shape default
+ arrow keys
+\end_layout
+
+\begin_layout Itemize
+Changed background color to differentiate against Display widget :) 
+\end_layout
+
+\begin_layout Section*
+ForkIO
+\end_layout
+
+\begin_layout Standard
+Because 
+\begin_inset Quotes eld
+\end_inset
+
+Save to file
+\begin_inset Quotes erd
+\end_inset
+
+ may take a long time, the IO operation is used with forkIO function.
+ However this does not work well in ghci in general, especially in Windows
+ and Mac.
+ It works best with running compiled code instead.
+ Because of this glitch, I commented out forkIO functionality -- this will
+ prevent the interactivity during a long IO operation such as Save to file
+ and Play [music] file buttons at the bottom
+\end_layout
+
+\begin_layout Subsection*
+IO monad vs UI monad
+\end_layout
+
+\begin_layout Standard
+The UI monad contains Graphic and Sound.
+\end_layout
+
+\begin_layout LyX-Code
+newtype Graphic = Graphic (IO ()) -- SOE.lhs line 87
+\end_layout
+
+\begin_layout LyX-Code
+type Sound = IO ()                -- UIMonad.lhs line 204
+\end_layout
+
+\begin_layout LyX-Code
+
+\end_layout
+
+\begin_layout Standard
+Some IO () operations were required in this library, and although it does
+ not make much sense semantically, saving file (which writes to disk) or
+ playing file (which execute a sytem command) was handled though the Sound
+ state.
+ I provided a useful help that helps 
+\begin_inset Quotes eld
+\end_inset
+
+lift
+\begin_inset Quotes erd
+\end_inset
+
+ an IO () to UI ()
+\end_layout
+
+\begin_layout LyX-Code
+io2ui2 :: (a -> IO ()) -> Signal a -> UI ()
+\end_layout
+
+\begin_layout LyX-Code
+io2ui2 ioAction stuff = UI aux
+\end_layout
+
+\begin_layout LyX-Code
+  where aux ctx inp = (out <*> stuff <*> inp, (nullLayout, ()))
+\end_layout
+
+\begin_layout LyX-Code
+        out = pure (
+\backslash
+x (ievt,s) -> ((nullGraphic, ioAction x),s))
+\end_layout
+
+\begin_layout Standard
+Because both Graphic and Sound are restricted to IO (), it does not, however,
+ seems possible to execute an IO a (not IO ()) operation within a UI monad.
+\end_layout
+
+\begin_layout Standard
+For more interesting aspects of the code, such as graph drawing, please
+ take a glance at 
+\shape italic
+\size large
+\emph on
+InstrVislizr.hs
+\end_layout
+
+\begin_layout Section*
+Conclusion
+\end_layout
+
+\begin_layout Standard
+InstrVislizr aims at making it easier to visualize the sound product created
+ by instruments implemented in Haskell, help a composer multitask and improve
+ his productivity.
+ Implemented with Euterpea's limited Graphic Music Interface, InstrVislizr
+ also helps push for the development of more basic widgets that would be
+ useful for Euterpea users.
+ 
+\end_layout
+
+\begin_layout Standard
+To a small extent, InstrVislizr connects Euterpea's two separate components
+ that are not playing nice with each other yet, the UI Monad and audio Signal
+ Functional interface.
+ The graph is drawn lazily depending on how many points are asked to plot
+ on the screen, which InstrVislizr would extract from the sound signal function.
+ It gets slower as the number of plottable samples become larger (by zooming
+ out further).
+ If UI Monad and Signal Functional can eventually talk to each other with
+ respect to  their infinite stream structure, many improvements can be made
+ on the graph, including animation and user interactivity.
+\end_layout
+
+\begin_layout Standard
+There are still many limitations with InstrVislizr, such as not being able
+ to do sound playback from memory, buggy (segfault) threading issues, but
+ I believe this is a contribution towards physical modelling of sound instrument
+s in Euterpea.
 \end_layout
 
 \end_body

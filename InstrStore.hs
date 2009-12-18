@@ -19,8 +19,8 @@ import Control.Arrow ((>>>), (^>>), arr)
 import Euterpea.Audio.Types
 import Euterpea hiding (line, delay, f)
 
-pFieldsMap = [(thornyMessy, [0.2, 0.05, 0.5, 0.3]), (ericFlute, [1.0])]
-instrMap   = instrMapStereo
+pFieldsMapSample = [(thornyMessy, [0.2, 0.05, 0.5, 0.3]), (ericFlute, [1.0]), (i1104, [0    , 5   , 7000 , 100 , 1   , 1.5 , 20, 5 , 1   , 1, 11, 12, 0.86, 2.01, 21, 22, 0.77, 3.02, 31, 32, 0.68, 4.03, 41, 42, 0.59, 5.04, 51, 52, 0.5 , 6.05, 61, 62, 11])]
+--instrMap   = instrMapStereo
 
 -- TODO: Can we have a mixed instrMap of both Mono and Stereo?
 --instrMapMono ::  (Clock p, AudioSample a) => InstrMap ( Signal p () a)
@@ -164,7 +164,7 @@ f 71 = gen10 1024 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 f 72 = gen10 1024 [0, 0, 0, 1, 0, 1, 0, 1, 0, 1]
 f 73 = gen09 1024 [(1.5, 0.8, 180 ), (2.4, 0.78, 170), (3.5, 0.8, 160    ), (4.6, 0.65, 140)]
 f 74 = gen09 1024 [(1.3, 0.5, 170 ), (3.34, 0.6, 190), (4.7, 0.7, 140    ), (5.33, 0.35, 200)]
-f _  = error "Table not exist"
+f _  = f 74 -- error "Table not exist"
 
 --instr1104 :: Instr (Stereo AudRate)
 instr1104 dur ap vol pFields =

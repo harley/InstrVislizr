@@ -1,3 +1,2 @@
--- need to compile with Euterpea src because Euterpea.UI.Widgets are not public
 :set -i/home/accts/dtt22/Euterpea/src:/home/accts/dtt22/Euterpea/dist/build
 
