@@ -1,0 +1,23 @@
+Harley Trung
+CPSC 432
+Friday, December 18, 2009
+
+Installation instruction on InstrVislizr
+
+    Please update the makefile file with the correct path to Euterpea.  All you need to do is type
+    "make" in the terminal and if the Euterpea is located successfully, this should work.
+    Let me know if there's any issues.
+
+    Instruction on how to use the file is presented in paper.pdf .  Please take a look.
+
+    Optional: change the ".ghci" file to reflect the right path to Euterpea/src and Euterpea/dist/build.  This way the path is automatically loaded when you run "ghci" under the current folder (that contains ".ghci" file.
+
+    For Windows without makefile utility, instead of running "make", just copy the command that is put in the makefile and run in the command line.  Bascially:
+
+    To Compile and run ./main (or main.exe on windows) for demo:
+    ghc --make main.hs -i<path_to_Euterpea>/src:<path_to_Euterpea>/dist/build
+
+
+    For ghci:
+    ghci -i<path_to_Euterpea>/src:<path_to_Euterpea>/dist/build
+
